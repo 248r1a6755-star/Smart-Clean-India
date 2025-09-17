@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Smart Clean India — Report Garbage</title>
+  <style>
+    :root{
+      --accent:#1e88e5;
+      --muted:#666;
+      --card:#fff;
+      --bg:#f4f6f9;
+      --danger:#d32f2f;
+      --radius:12px;
+    }
+    body{
+      margin:0;
+      font-family:Inter, system-ui, Arial, sans-serif;
+      background:linear-gradient(180deg,#eef3fb 0%,var(--bg) 100%);
+      color:#111;
+      display:flex;
+      align-items:flex-start;
+      justify-content:center;
+      padding:28px;
+    }
+    .app {
+      width:100%;
+      max-width:980px;
+      background:var(--card);
+      border-radius:16px;
+      box-shadow:0 8px 30px rgba(20,30,50,0.08);
+      padding:20px;
+    }
+    header{
+      display:flex;
+      align-items:center;
+      gap:16px;
+      margin-bottom:12px;
+    }
+    header h1{
+      margin:0;
+      font-size:20px;
+    }
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr 360px;
+      gap:16px;
+    }
+    .panel{
+      background:linear-gradient(180deg,#fff,#fbfdff);
+      border-radius:12px;
+      padding:14px;
+      box-shadow:0 4px 10px rgba(12,20,40,0.03);
+    }
+    .controls {
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      margin-bottom:10px;
+    }
+    button{
+      background:var(--accent);
+      color:white;
+      border:none;
+      padding:10px 12px;
+      border-radius:8px;
+      cursor:pointer;
+      font-weight:600;
+      box-shadow:0 3px 8px rgba(30,136,229,0.12);
+    }
+    button.secondary{
+      background:#fff;
+      color:var(--accent);
+      border:1px solid rgba(30,136,229,0.12);
+      box-shadow:none;
+    }
+    button.danger{
+      background:var(--danger);
+    }
+    label.file{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:8px 10px;
+      background:#fff;
+      border-radius:8px;
+      border:1px dashed rgba(0,0,0,0.05);
+      cursor:pointer;
+      color:var(--muted);
+    }
+
+    #videoPreview{
+      width:100%;
+      aspect-ratio:4/3;
+      background:#000;
+      border-radius:10px;
+      object-fit:cover;
+      display:block;
+    }
+    canvas{
+      display:none;
+    }
+    .preview-img{
+      width:100%;
+      border-radius:10px;
+      object-fit:cover;
+      aspect-ratio:4/3;
+      background:#f4f6f9;
+      display:block;
+    }
+    .meta{
+      font-size:14px;
+      color:var(--muted);
+      margin-top:8px;
+      line-height:1.4;
+    }
+    .field{
+      margin:10px 0;
+    }
+    .small{
+      font-size:13px;
+      color:var(--muted);
+    }
+    .bins-list{
+      margin-top:10px;
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+    }
+    .bin{
+      padding:8px;
+      border-radius:8px;
+      background:linear-gradient(180deg,#fcfcff,#fff);
+      border:1px solid rgba(0,0,0,0.03);
+      font-size:14px;
+    }
+    footer{
+      margin-top:16px;
+      text-align:right;
+      font-size:13px;
+      color:var(--muted);
+    }
+
+    @media (max-width:900px){
+      .grid{ grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app" role="application" aria-label="Smart Clean India app">
+    <header>
+      <div style="width:56px;height:56px;border-radius:12px;background:linear-gradient(180deg,#1e88e5,#6fb1ff);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700">SC</div>
+      <div>
+        <h1>Smart Clean India — Report Garbage</h1>
+        <div class="small">Take a photo, capture location, and share with authorities</div>
+      </div>
+    </header>
+
+    <main class="grid" >
+      <section class="panel" aria-labelledby="capture">
+        <div style="display:flex;gap:8px;align-items:center;">
+          <div style="flex:1">
+            <div class="controls">
+              <button id="startCameraBtn">Open Camera</button>
+              <label class="file">
+                <input id="fileInput" accept="image/*" type="file" style="display:none" />
+                Upload Photo
+              </label>
+              <button id="captureBtn" class="secondary">Capture Photo</button>
+              <button id="stopCameraBtn" class="secondary">Stop Camera</button>
+            </div>
+            <video id="videoPreview" autoplay playsinline></video>
+            <canvas id="snapshotCanvas"></canvas>
+            <img id="photoPreview" class="preview-img" alt="photo preview" style="margin-top:8px;display:none">
+            <div class="meta field">
+              <div id="locationText">Location: <em>Not known</em></div>
+              <div id="nearestBinText" class="small">Nearest bin: —</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="notes" class="small">Optional notes</label><br>
+          <textarea id="notes" rows="3" style="width:100%;padding:8px;border-radius:8px;border:1px solid rgba(0,0,0,0.06)"></textarea>
+        </div>
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+          <button id="shareBtn">Share Report (recommended)</button>
+          <button id="whatsappBtn" class="secondary">Open WhatsApp</button>
+          <button id="mailtoBtn" class="secondary">Open Email (no attachment)</button>
+          <button id="downloadBtn" class="secondary">Download Image</button>
+          <button id="copyBtn" class="secondary">Copy Report Text</button>
+        </div>
+
+      </section>
+
+      <aside class="panel" aria-labelledby="bins">
+        <h3 style="margin:0 0 8px 0">Known Dustbins (sample)</h3>
+        <div class="small">These are example coordinates — replace with your city’s actual bin locations later.</div>
+
+        <div id="binsList" class="bins-list" aria-live="polite">
+          <!-- JS fills -->
+        </div>
+
+        <div style="margin-top:12px">
+          <button id="findNearestBtn">Find Nearest Bin (uses your current location)</button>
+        </div>
+
+        <div style="margin-top:12px">
+          <h4 style="margin:6px 0">Prepared Report</h4>
+          <pre id="reportPreview" style="white-space:pre-wrap;background:#f7f9fc;padding:8px;border-radius:8px;border:1px solid rgba(0,0,0,0.03);font-size:13px"></pre>
+        </div>
+      </aside>
+    </main>
+
+    <footer>
+      Tip: For auto-sharing image + text on mobile, use the Share button. Email cannot attach files automatically via mailto.
+    </footer>
+  </div>
+
+  <script>
+  // ----------------------
+  // Smart Clean India - front-end only
+  // - Takes photo via camera or file
+  // - Gets geolocation
+  // - Finds nearest bin from hardcoded list
+  // - Prepares report text
+  // - Allows sharing via Web Share API (if supported), WhatsApp, mailto, copy, download
+  // ----------------------
+
+  // DOM
+  const startCameraBtn = document.getElementById('startCameraBtn');
+  const stopCameraBtn = document.getElementById('stopCameraBtn');
+  const captureBtn = document.getElementById('captureBtn');
+  const video = document.getElementById('videoPreview');
+  const canvas = document.getElementById('snapshotCanvas');
+  const photoPreview = document.getElementById('photoPreview');
+  const fileInput = document.getElementById('fileInput');
+  const locationText = document.getElementById('locationText');
+  const nearestBinText = document.getElementById('nearestBinText');
+  const shareBtn = document.getElementById('shareBtn');
+  const whatsappBtn = document.getElementById('whatsappBtn');
+  const mailtoBtn = document.getElementById('mailtoBtn');
+  const downloadBtn = document.getElementById('downloadBtn');
+  const copyBtn = document.getElementById('copyBtn');
+  const binsListEl = document.getElementById('binsList');
+  const findNearestBtn = document.getElementById('findNearestBtn');
+  const reportPreview = document.getElementById('reportPreview');
+  const notesEl = document.getElementById('notes');
+
+  let stream = null;
+  let currentImageBlob = null;
+  let currentLat = null, currentLon = null;
+
+  // Example bins (replace with real coordinates)
+  const BINS = [
+    { name: "Bin - MG Road", lat: 17.3850, lon: 78.4867 },
+    { name: "Bin - Jubilee Hills", lat: 17.4325, lon: 78.4044 },
+    { name: "Bin - Banjara Hills", lat: 17.4190, lon: 78.4280 },
+    { name: "Bin - Necklace Road", lat: 17.4120, lon: 78.4730 },
+    { name: "Bin - Public Park", lat: 17.3950, lon: 78.4790 }
+  ];
+
+  // Populate bins list
+  for (let b of BINS) {
+    const div = document.createElement('div');
+    div.className = 'bin';
+    div.textContent = b.name + " — " + b.lat.toFixed(5) + ", " + b.lon.toFixed(5);
+    binsListEl.appendChild(div);
+  }
+
+  // Utility: Haversine distance (km)
+  function distanceKm(lat1, lon1, lat2, lon2) {
+    const R = 6371; // km
+    const toRad = deg => deg * Math.PI / 180;
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon/2)**2;
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+  }
+
+  // Get location
+  async function fetchLocation() {
+    if (!navigator.geolocation) {
+      locationText.innerHTML = "Location: <em>Geolocation not supported</em>";
+      return;
+    }
+    locationText.innerHTML = "Location: <em>Getting location…</em>";
+    return new Promise((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(pos => {
+        currentLat = pos.coords.latitude;
+        currentLon = pos.coords.longitude;
+        locationText.innerHTML = `Location: ${currentLat.toFixed(6)}, ${currentLon.toFixed(6)}`;
+        resolve(pos);
+      }, err => {
+        locationText.innerHTML = `Location: <em>Permission denied or unavailable</em>`;
+        reject(err);
+      }, { enableHighAccuracy: true, timeout: 10000 });
+    });
+  }
+
+  // Find nearest bin
+  function findNearestBin() {
+    if (currentLat == null || currentLon == null) {
+      nearestBinText.textContent = "Nearest bin: (location unknown — click Find Nearest)";
+      return null;
+    }
+    let minD = Infinity, minIdx = -1;
+    for (let i=0;i<BINS.length;i++){
+      const d = distanceKm(currentLat, currentLon, BINS[i].lat, BINS[i].lon);
+      if (d < minD) { minD = d; minIdx = i; }
+    }
+    const b = BINS[minIdx];
+    nearestBinText.textContent = `Nearest bin: ${b.name} — ${minD.toFixed(2)} km`;
+    return { bin: b, distanceKm: minD };
+  }
+
+  // Prepare report text
+  function prepareReportText() {
+    const timeStr = new Date().toLocaleString();
+    const notes = notesEl.value.trim();
+    const coords = (currentLat && currentLon) ? `${currentLat.toFixed(6)}, ${currentLon.toFixed(6)}` : "Unknown";
+    const nearest = findNearestBin();
+    const nearestText = nearest ? `${nearest.bin.name} (${nearest.distanceKm.toFixed(2)} km)` : "Unknown";
+    const msg = [
+      "Smart Clean India — Garbage Report",
+      `Time: ${timeStr}`,
+      `Location: ${coords}`,
+      `Nearest Bin: ${nearestText}`,
+      notes ? `Notes: ${notes}` : "",
+      "",
+      "Please take necessary action. Reported via Smart Clean India app."
+    ].filter(Boolean).join("\n");
+    reportPreview.textContent = msg;
+    return msg;
+  }
+
+  // Start camera
+  async function startCamera() {
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio:false });
+      video.srcObject = stream;
+      video.style.display = 'block';
+      photoPreview.style.display = 'none';
+    } catch(err) {
+      alert("Could not open camera: " + err.message + "\nIf you're on desktop, try Upload Photo or use https + allow camera permission.");
+    }
+  }
+
+  // Stop camera
+  function stopCamera() {
+    if (stream) {
+      stream.getTracks().forEach(t => t.stop());
+      stream = null;
+      video.srcObject = null;
+    }
+  }
+
+  // Capture from video to canvas and set preview & blob
+  function capturePhotoFromVideo() {
+    if (!stream) {
+      alert("Camera not started. Click 'Open Camera' first or use Upload Photo.");
+      return;
+    }
+    const w = video.videoWidth || 1280;
+    const h = video.videoHeight || 960;
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, w, h);
+    canvas.toBlob(blob => {
+      currentImageBlob = blob;
+      const url = URL.createObjectURL(blob);
+      photoPreview.src = url;
+      photoPreview.style.display = 'block';
+      prepareReportText();
+    }, 'image/jpeg', 0.9);
+  }
+
+  // When user selects file upload
+  fileInput.addEventListener('change', e => {
+    const f = e.target.files[0];
+    if (!f) return;
+    currentImageBlob = f;
+    const url = URL.createObjectURL(f);
+    photoPreview.src = url;
+    photoPreview.style.display = 'block';
+    prepareReportText();
+  });
+
+  // Buttons
+  startCameraBtn.addEventListener('click', async () => {
+    await startCamera();
+    // try to get location when camera starts
+    fetchLocation().then(()=> prepareReportText()).catch(()=>prepareReportText());
+  });
+  stopCameraBtn.addEventListener('click', () => { stopCamera(); });
+  captureBtn.addEventListener('click', () => { capturePhotoFromVideo(); });
+
+  // Find nearest button
+  findNearestBtn.addEventListener('click', async () => {
+    try {
+      await fetchLocation();
+      const nearest = findNearestBin();
+      prepareReportText();
+      if (nearest) {
+        // offer open Google Maps link for navigation
+        const lat = nearest.bin.lat, lon = nearest.bin.lon;
+        if (confirm(`Open Google Maps for navigation to ${nearest.bin.name}?`)) {
+          window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`, '_blank');
+        }
+      }
+    } catch(err) {
+      alert("Could not get location: " + err.message);
+    }
+  });
+
+  // Share button uses Web Share API (files + text) when supported
+  shareBtn.addEventListener('click', async () => {
+    const text = prepareReportText();
+    // If we have image blob and browser supports share with files
+    if (navigator.canShare && currentImageBlob && navigator.canShare({ files: [currentImageBlob] })) {
+      try {
+        await navigator.share({
+          title: 'Garbage Report',
+          text: text,
+          files: [currentImageBlob]
+        });
+        alert('Shared successfully (use Email/WhatsApp/other app in the share sheet).');
+        return;
+      } catch(err) {
+        alert('Share cancelled or failed: ' + err.message);
+      }
+    }
+    // Fallback: if at least text sharing is supported
+    if (navigator.share) {
+      try {
+        await navigator.share({ title:'Garbage Report', text: text });
+        return;
+      } catch(err) {
+        // ignore
+      }
+    }
+    // Last fallback: copy text + ask user to download image and attach manually
+    try {
+      await navigator.clipboard.writeText(text);
+      alert('Report text copied to clipboard. Please open email/WhatsApp and attach the image manually (download it using Download Image).');
+    } catch (e) {
+      alert('Unable to copy. Please manually select the report text to copy.');
+    }
+  });
+
+  // WhatsApp
+  whatsappBtn.addEventListener('click', () => {
+    const text = encodeURIComponent(prepareReportText());
+    // For web WhatsApp:
+    window.open(`https://wa.me/?text=${text}`, '_blank');
+  });
+
+  // Mailto (cannot attach files)
+  mailtoBtn.addEventListener('click', () => {
+    const ghmcEmail = 'ghmc@example.com'; // <-- replace with actual GHMC email
+    const subj = encodeURIComponent('Garbage Report from Smart Clean India');
+    const body = encodeURIComponent(prepareReportText() + '\n\n(Please attach the image manually if required.)');
+    window.location.href = `mailto:${ghmcEmail}?subject=${subj}&body=${body}`;
+  });
+
+  // Download image
+  downloadBtn.addEventListener('click', () => {
+    if (!currentImageBlob) {
+      alert('No image to download. Capture or upload a photo first.');
+      return;
+    }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(currentImageBlob);
+    a.download = 'garbage_report.jpg';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
+  // Copy report text
+  copyBtn.addEventListener('click', async () => {
+    const txt = prepareReportText();
+    try {
+      await navigator.clipboard.writeText(txt);
+      alert('Report copied to clipboard. Paste into email/WhatsApp and attach image if needed.');
+    } catch(e) {
+      alert('Copy failed. Please manually select the text in the "Prepared Report" box and copy.');
+    }
+  });
+
+  // Update prepared text when notes change
+  notesEl.addEventListener('input', () => prepareReportText());
+
+  // Keep trying to update location in background (optional)
+  // You can call fetchLocation periodically if desired:
+  // setInterval(() => { fetchLocation().then(()=>prepareReportText()).catch(()=>{}); }, 20000);
+
+  // Accessibility: prepare initial text
+  prepareReportText();
+
+  // Clean up camera when leaving page
+  window.addEventListener('beforeunload', () => { stopCamera(); });
+
+  </script>
+</body>
+</html>
